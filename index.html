@@ -1,0 +1,708 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>台灣產業市場圖譜</title>
+<meta name="description" content="200 個節點的台灣產業網絡圖譜：產業、雇主、科學園區、職務、技能與利基領域，以及每一塊市場與黃辰晉的距離。">
+<meta property="og:title" content="台灣產業市場圖譜">
+<meta property="og:description" content="200 個節點的台灣產業網絡圖譜：產業、雇主、科學園區、職務、技能與利基領域，以及每一塊市場與黃辰晉的距離。">
+<meta property="og:type" content="website">
+<style>html{-webkit-text-size-adjust:100%}body{margin:0;font-size:14px}img{max-width:100%}[hidden]{display:none!important}
+.lang{align-self:flex-end;font-size:13px;color:var(--muted)}.lang a{color:inherit}</style>
+</head>
+<body>
+
+<style>
+/* Layout: full-width zoomable co-occurrence atlas with a floating legend and a node inspector, followed by a computed distance-from-you chart and a short reading. */
+:root{
+  --bg:#ffffff; --fg:#1b1f24; --muted:#5b6570; --line:#e2e6eb; --panel:#f5f7f9; --panel-strong:#ffffffee; --you:#111418; --hl:#111418;
+  --cM:#8C96A3; --c1:#8BC34A; --c2:#F07F2E; --c3:#E0559A; --c4:#9C6B3E; --c5:#D4B21E; --c6:#5DADE2; --c7:#2E5FA8;
+  --c8:#B37FD9; --c9:#26B5B5; --c10:#7D8F69; --c11:#7C83D6; --c12:#E57373; --c13:#0F766E; --c14:#22B573;
+  --sans:"PingFang TC","Microsoft JhengHei",Arial,sans-serif; --mono:ui-monospace,Menlo,monospace; --label:"PingFang TC","Microsoft JhengHei",Arial,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121519; --fg:#e7eaee; --muted:#98a2ad; --line:#2a3037; --panel:#1a1e23; --panel-strong:#1a1e23ee; --you:#f3f5f7; --hl:#f3f5f7; --c7:#5B8BD6; color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#121519; --fg:#e7eaee; --muted:#98a2ad; --line:#2a3037; --panel:#1a1e23; --panel-strong:#1a1e23ee; --you:#f3f5f7; --hl:#f3f5f7; --c7:#5B8BD6; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:15px;line-height:1.55}
+.wrap{max-width:1400px;margin:0 auto;padding-block:26px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:26px}
+header{display:flex;flex-direction:column;gap:6px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font-size:clamp(24px,3.4vw,36px);line-height:1.12;margin:0;font-weight:700;text-wrap:balance}
+.lede{max-width:78ch;color:var(--muted);margin:0}
+h2{font-size:19px;margin:0 0 10px;font-weight:600;text-wrap:balance}
+.stats{display:flex;flex-wrap:wrap;gap:8px 22px;font-family:var(--mono);font-size:13px;color:var(--muted)}
+.stats b{color:var(--fg);font-weight:500}
+
+.atlas{position:relative;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--bg)}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line);background:var(--panel)}
+.toolbar input{font:inherit;font-size:14px;padding:6px 10px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--fg);min-width:0;flex:1 1 220px;max-width:340px}
+.toolbar button{font:inherit;font-size:13px;padding:6px 11px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--fg);cursor:pointer}
+.toolbar button[aria-pressed="true"]{border-color:var(--fg)}
+.toolbar button:focus-visible,.toolbar input:focus-visible{outline:2px solid var(--fg);outline-offset:1px}
+.toolbar .hint{font-size:12.5px;color:var(--muted);margin-left:auto}
+.stage{position:relative;height:min(80vh,860px);min-height:520px}
+svg#map{display:block;width:100%;height:100%;cursor:grab;touch-action:none}
+svg#map:active{cursor:grabbing}
+.node-label{font-family:var(--label);fill:var(--fg);paint-order:stroke;stroke:var(--bg);stroke-linejoin:round;pointer-events:none}
+.dim{opacity:.07}
+.path-edge{stroke:var(--hl)!important;stroke-opacity:1!important}
+g.node{cursor:pointer}
+g.node:focus{outline:none}
+g.node:focus-visible circle.body{stroke:var(--fg);stroke-width:3}
+
+.legend{position:absolute;top:10px;left:10px;background:var(--panel-strong);border:1px solid var(--line);border-radius:5px;padding:6px 8px;font-family:var(--label);font-size:11.5px;line-height:1.3;max-height:calc(100% - 20px);overflow:auto;width:236px}
+.legend table{border-collapse:collapse;width:100%}
+.legend th{text-align:left;font-weight:700;padding:2px 4px 5px;white-space:nowrap}
+.legend th.n,.legend td.n{text-align:right;font-variant-numeric:tabular-nums}
+.legend td{padding:2px 4px;vertical-align:middle}
+.legend tr.row{cursor:pointer}
+.legend tr.row:hover td,.legend tr.row.on td{background:var(--line)}
+.legend tr.row:focus-visible{outline:2px solid var(--fg)}
+.sw{display:inline-grid;place-items:center;width:24px;height:16px;color:#fff;font-weight:700;font-size:11px}
+.legend .toggle{display:none;font:inherit;font-weight:700;background:none;border:0;color:var(--fg);padding:0;cursor:pointer}
+
+.inspector{position:absolute;top:10px;right:10px;width:270px;max-height:calc(100% - 20px);overflow:auto;background:var(--panel-strong);border:1px solid var(--line);border-radius:5px;padding:12px 14px;font-size:13.5px}
+.inspector h3{margin:0 0 2px;font-size:16px;line-height:1.25}
+.inspector .meta{font-family:var(--mono);font-size:12px;color:var(--muted);margin-bottom:8px}
+.inspector .path{font-size:13px;margin:6px 0 8px;line-height:1.5}
+.inspector .path span{white-space:nowrap}
+.inspector ul{margin:4px 0 0;padding-left:18px;columns:2;column-gap:14px;font-size:12.5px}
+.inspector li{break-inside:avoid}
+.inspector .empty{color:var(--muted)}
+.pill{display:inline-block;font-family:var(--mono);font-size:11.5px;padding:1px 7px;border-radius:10px;color:#fff;margin-right:4px}
+
+.dist{display:flex;flex-direction:column;gap:8px}
+.drow{display:grid;grid-template-columns:minmax(0,16rem) minmax(0,1fr) 7.5rem;gap:12px;align-items:center}
+.drow .lab{font-size:14px;min-width:0;display:flex;gap:8px;align-items:center}
+.drow .lab i{width:11px;height:11px;border-radius:50%;flex:none;display:inline-block}
+.track{height:14px;background:var(--line);border-radius:2px;position:relative;min-width:0}
+.track span{position:absolute;inset:0 auto 0 0;border-radius:2px}
+.drow .num{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:13px;text-align:right}
+.note{font-size:13px;color:var(--muted);max-width:80ch;margin:6px 0 0}
+
+.reading{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px 30px}
+.reading section{min-width:0}
+.reading h3{font-size:15px;margin:0 0 4px;font-weight:600}
+.reading p{margin:0}
+.bottom{background:var(--panel);border-radius:6px;padding:18px 20px}
+.bottom p{margin:0;max-width:85ch}
+.sources{font-size:12.5px;color:var(--muted)}
+.sources a{color:inherit}
+
+@media (max-width:900px){
+  .reading{grid-template-columns:minmax(0,1fr)}
+  .inspector{position:static;width:auto;max-height:none;border-width:1px 0 0;border-radius:0}
+  .legend{width:auto;right:10px;max-height:46px;overflow:hidden}
+  .legend.open{max-height:calc(100% - 20px);overflow:auto}
+  .legend .toggle{display:block}
+  .drow{grid-template-columns:minmax(0,1fr) 6.5rem}
+  .drow .track{grid-column:1 / -1;order:3}
+  .toolbar .hint{margin-left:0;flex-basis:100%}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap" lang="zh-Hant">
+  <header>
+    <span class="lang">繁體中文 · <a href="en/">English</a></span>
+    <span class="eyebrow">台灣整體市場 · 共現網絡圖譜 · 2026 年 11 月</span>
+    <h1>台灣產業市場圖譜：你在哪裡</h1>
+    <p class="lede">這張圖涵蓋整個台灣經濟：三大產業的 GDP 占比、十多個產業群、主要雇主、科學園區、各家在招的職務類別、你的技能，以及這些技能與需求交會的利基領域。點任何一個節點，就會畫出它到你的最短路徑；經過的「跳數」，就是那一塊市場離你有多遠。</p>
+    <div class="stats" id="stats"></div>
+  </header>
+
+  <div class="atlas">
+    <div class="toolbar">
+      <input id="q" type="search" placeholder="搜尋公司、產業、技能…（例如 台積電、台中、CUDA）" aria-label="搜尋節點" list="names">
+      <datalist id="names"></datalist>
+      <button id="fit" type="button">顯示全部</button>
+      <button id="you" type="button">聚焦到你</button>
+      <button id="labels" type="button" aria-pressed="false">顯示所有標籤</button>
+      <span class="hint">滾輪或雙指縮放 · 拖曳平移 · 點節點看它到你的路徑</span>
+    </div>
+    <div class="stage">
+      <svg id="map" role="img" aria-label="台灣經濟網絡圖譜，以及黃辰晉在其中的位置"></svg>
+      <div class="legend" id="legend"></div>
+      <aside class="inspector" id="inspector" aria-live="polite"></aside>
+    </div>
+  </div>
+
+  <section>
+    <h2>每一塊市場離你有多遠</h2>
+    <div class="dist" id="dist"></div>
+    <p class="note">這張圖由頁面直接從網絡計算：對每個群集，取你的節點到該群集所有節點的最短路徑長度（跳數）平均值。長條越短，代表那塊市場越能直接用上你現有的能力；越長，代表中間還要先跨過其他步驟，例如補一項技能、換一種職務或先待另一家公司。</p>
+  </section>
+
+  <section>
+    <h2>這張圖告訴你什麼</h2>
+    <div class="reading">
+      <section>
+        <h3>大部分地圖離你很遠，這很正常</h3>
+        <p>金融、零售、餐飲、觀光與不動產構成服務業 55.1% GDP 的大宗，平均離你五跳以上。這些產業用不到感測物理，也用不到 GPU kernel。這裡的距離衡量的是一個群集能用上你多少能力，不是這個群集有多重要。</p>
+      </section>
+      <section>
+        <h3>大型雇主離你隔了一層</h3>
+        <p>台積電、鴻海與記憶體廠主要招製程、設備與測試工程師。從你的節點出發，要先經過「職務類別」才接得上它們，而不是直接經由你的技能。所以這些職缺對你來說像是繞路：職缺是真的，但不是為你的技能而開。</p>
+      </section>
+      <section>
+        <h3>利基領域是捷徑</h3>
+        <p>十個綠色利基節點，是唯一能一步把你的技能接到雇主的地方，多數同時用到你兩到三個技能面向。它們主要集中在新竹與台北；中部則有上銀、大立光、怡利、國網中心臺中分部與中科。</p>
+      </section>
+      <section>
+        <h3>台中是你最強的在地群集</h3>
+        <p>從「台中南屯」節點出發，最短路徑會經過台中精密機械走廊與中部科學園區，接到上銀、大立光、捷安特、華邦與友達。如果你不想搬家，就從這裡開始。</p>
+      </section>
+      <section>
+        <h3>供應鏈把看似無關的群集串在一起</h3>
+        <p>石化供應半導體材料，鋼鐵供應工具機，工具機再供應機器人；先進封裝則供應 AI 伺服器。正因為有這些連結，就算先從機器人視覺或 AOI 起步，之後仍然走得到半導體。</p>
+      </section>
+      <section>
+        <h3>細線，是獨立產品的起點</h3>
+        <p>高光譜農產品分級（農業只占 GDP 1.4%）與工廠排放監測（環保局）各自只有一條線連到市場、一條線連到你。大公司不看這種縫隙；一個手上有可運作儀器的獨立開發者，可以把它吃下來。</p>
+      </section>
+    </div>
+  </section>
+
+  <div class="bottom"><p><strong>結論。</strong>在這個 200 節點的台灣市場模型裡，只有綠色利基節點能一步把你的三個技能群接到雇主。你的求職池很小，但池子裡的雇主比多數公司更看重你的能力。而這個位置，也就是橫跨感測物理、GPU 執行環境與評估設計的橋樑，同樣是走向系統架構師或獨立開發者的起點。</p></div>
+
+  <p class="sources">製作方式：GDP 占比為你提供的數字。產業結構依台灣行業標準分類的大類。雇主、科學園區與利基領域來自公開公司資訊，以及本專案已驗證的公司名單（v2，2026-11-16）。節點大小與連線權重是用來表達關係的結構模型，不是實測的交易流量或人數。延伸參考：<a href="https://uanalyze.com.tw/articles/6519143552" target="_blank" rel="noopener">104 AI 職缺數據（2025 年 11 月）</a> · <a href="https://www.ctee.com.tw/news/20260110700298-430401" target="_blank" rel="noopener">工商時報 就業人數估計（2026-01-10）</a>。</p>
+</div>
+
+<script src="assets/d3.min.js"></script>
+<script>
+(function(){
+const CL = {
+  0:{n:'你（橋樑節點）',k:'you'},
+  M:{n:'三級產業 GDP',k:'cM'},
+  1:{n:'農林漁牧',k:'c1'},
+  2:{n:'半導體',k:'c2'},
+  3:{n:'資通訊硬體與電子',k:'c3'},
+  4:{n:'傳統製造業',k:'c4'},
+  5:{n:'能源、公用事業與營建',k:'c5'},
+  6:{n:'批發零售與物流',k:'c6'},
+  7:{n:'金融與不動產',k:'c7'},
+  8:{n:'住宿、餐飲與文化',k:'c8'},
+  9:{n:'軟體、電信與 AI 服務',k:'c9'},
+ 10:{n:'公部門、醫療與研究',k:'c10'},
+ 11:{n:'區域與科學園區',k:'c11'},
+ 12:{n:'職務類別',k:'c12'},
+ 13:{n:'你的技能',k:'c13'},
+ 14:{n:'目標利基（稀有需求）',k:'c14'}
+};
+const ORDER=['M',1,2,3,4,5,6,7,8,9,10,11,12,13,14,0];
+const color = c => `var(--${CL[c].k})`;
+
+const RAW = `
+you|你 · 黃辰晉|0|40
+svc|服務業 55.1%|M|55.1
+ind|工業 43.5%|M|43.5
+mfg|製造業 38.6%|M|38.6
+agr|農業 1.4%|M|1.4
+a_crop|稻米與作物|1|4
+a_fruit|水果與茶|1|4
+a_fish|漁業與養殖|1|4
+a_live|畜牧|1|3
+a_forest|林業|1|2
+a_sort|光學分選與分級|1|3
+a_smart|智慧農業|1|3
+s_foundry|晶圓代工|2|14
+tsmc|台積電 TSMC|2|30
+umc|聯電 UMC|2|8
+psmc|力積電|2|5
+vis|世界先進|2|5
+s_design|IC 設計|2|12
+mtk|聯發科|2|12
+nvt|聯詠|2|6
+rtk|瑞昱|2|6
+s_mem|記憶體|2|6
+winbond|華邦電|2|6
+nanya|南亞科|2|5
+mxic|旺宏|2|4
+s_osat|封裝測試|2|9
+ase|日月光|2|10
+kyec|京元電|2|5
+ardentec|欣銓|2|4
+s_equip|設備與量測|2|9
+amat|應用材料 台灣|2|6
+asml|艾司摩爾 ASML|2|7
+kla|科磊 KLA|2|5
+lam|科林研發 Lam|2|4
+yxlon|Comet Yxlon（X 光）|2|3
+s_mat|材料與化學品|2|5
+s_adv|先進封裝 CoWoS|2|7
+h_server|AI 伺服器|3|14
+foxconn|鴻海|3|18
+quanta|廣達|3|10
+wistron|緯創|3|8
+wiwynn|緯穎|3|6
+inventec|英業達|3|5
+h_pc|個人電腦與筆電|3|8
+asus|華碩|3|7
+acer|宏碁|3|5
+compal|仁寶|3|5
+pegatron|和碩|3|6
+h_comp|電子零組件|3|8
+delta|台達電|3|8
+liteon|光寶|3|4
+yageo|國巨|3|4
+h_pcb|PCB 與載板|3|6
+unimicron|欣興|3|5
+h_disp|面板與光電|3|7
+auo|友達|3|5
+innolux|群創|3|5
+h_optics|光學鏡頭|3|6
+largan|大立光|3|6
+h_net|網通|3|5
+h_edge|工業電腦與邊緣 AI|3|6
+advantech|研華|3|6
+adlink|凌華|3|4
+h_aoi|AOI 與檢測設備|3|5
+utechzone|由田|3|4
+tri|德律|3|4
+machvision|牧德|3|3
+h_auto|車用電子|3|4
+eli|怡利電子|3|3
+t_petro|石化|4|9
+fpg|台塑|4|8
+t_steel|鋼鐵與金屬|4|7
+csc|中鋼|4|6
+t_mach|工具機與機械|4|8
+hiwin|上銀|4|6
+t_robot|機器人與自動化|4|6
+techman|達明|4|4
+solomon|所羅門|4|4
+t_auto|汽車零組件|4|5
+t_bike|自行車|4|4
+giant|捷安特|4|4
+t_textile|紡織與機能布料|4|5
+t_food|食品飲料製造|4|6
+unipres|統一企業|4|6
+t_plastic|塑橡膠|4|4
+t_pharma|製藥與生技|4|5
+t_meddev|醫療器材|4|4
+e_power|發電|5|7
+taipower|台電|5|6
+e_renew|離岸風電與太陽能|5|6
+e_gas|油氣|5|5
+cpc|中油|5|5
+e_water|自來水|5|3
+e_constr|營建|5|7
+e_infra|公共工程|5|5
+e_mining|礦業及土石採取|5|2
+e_grid|電網與儲能|5|4
+l_whole|批發|6|10
+l_retail|零售|6|9
+pxmart|全聯|6|4
+l_711|統一超商 7-ELEVEN|6|4
+l_ecom|電子商務|6|5
+l_ship|海運|6|6
+evergreen|長榮|6|5
+yangming|陽明|6|4
+l_air|航空客貨運|6|4
+l_port|港口與倉儲|6|4
+l_land|陸運|6|4
+f_bank|銀行|7|9
+ctbc|中信金|7|5
+f_ins|保險|7|8
+cathay|國泰金|7|6
+fubon|富邦金|7|6
+f_sec|證券與資產管理|7|5
+f_re|不動產|7|8
+f_fintech|金融科技|7|3
+f_prop|物業管理|7|3
+h8_food|餐飲|8|7
+h8_hotel|旅館住宿|8|5
+h8_tour|觀光|8|5
+h8_media|媒體與出版|8|3
+h8_ent|娛樂與藝文|8|3
+h8_sport|運動休閒|8|3
+h8_personal|個人服務|8|4
+i_sw|軟體服務|9|7
+i_cloud|雲端與資料中心|9|6
+i_tel|電信|9|6
+cht|中華電信|9|5
+i_sec|資安|9|4
+i_game|遊戲|9|4
+i_ai|AI 服務與新創|9|6
+kneron|耐能|9|3
+turing|台灣智慧駕駛|9|3
+metai|宇見智能 MetAI|9|3
+linker|鑫蘊林科|9|3
+i_saas|SaaS 與 ERP|9|4
+i_sales|AI 業務|9|3
+nvidia|NVIDIA 台灣|9|7
+p_gov|公共行政|10|6
+p_edu|教育|10|6
+p_univ|大學|10|5
+nyust|雲科大|10|3
+p_health|醫院與醫療|10|7
+p_itri|工研院|10|5
+p_nchc|國網中心|10|3
+p_artc|車輛中心|10|3
+p_nstc|國科會 · 園區管理局|10|3
+p_defense|國防產業|10|4
+p_epb|環保局|10|3
+r_hsp|新竹科學園區|11|8
+r_ctsp|中部科學園區|11|7
+r_stsp|南部科學園區|11|7
+r_taipei|台北內湖 · 南港|11|6
+r_taoyuan|桃園工業帶|11|5
+r_tcmach|台中精密機械|11|5
+r_mailiao|雲林麥寮|11|4
+r_khh|高雄港與重工業|11|5
+r_east|花蓮 · 台東|11|3
+r_chiayi|嘉義 · 屏東農業區|11|3
+r_nantun|台中南屯（住家）|11|3
+j_process|製程工程師|12|7
+j_equip|設備工程師|12|7
+j_test|測試／產品工程師|12|6
+j_fw|韌體工程師|12|5
+j_algo|影像演算法工程師|12|6
+j_sw|軟體工程師|12|8
+j_ai|AI／機器學習工程師|12|6
+j_fae|應用工程師 FAE|12|5
+j_data|資料科學家|12|4
+j_sim|模擬工程師|12|4
+j_sales|業務與 BD|12|6
+j_ops|作業員與技術員|12|7
+k_photo|光度校正|13|6
+k_gamma|20 段 Gamma 擬合|13|4
+k_hyper|高光譜 SWIR|13|5
+k_modbus|RS-485／Modbus RTU|13|4
+k_can|SocketCAN|13|3
+k_bench|實驗桌 bring-up|13|3
+k_field|現場驗證 59.7%→2.2%|13|6
+k_cuda|CUDA kernel|13|6
+k_trt|TensorRT|13|6
+k_bit|逐位元一致驗證|13|5
+k_jetson|Jetson 邊緣裝置|13|4
+k_cpp|C++17／RAII|13|5
+k_seg|實例分割|13|6
+k_eval|評估協定設計|13|6
+k_prereg|預先登錄的基準比較|13|4
+k_gate|零初始化閘控探針|13|3
+k_pyqt|PyQt6 儀器介面|13|3
+k_agent|LLM 代理與沙箱|13|3
+n_semi|半導體檢測|14|8
+n_aoi|AOI 視覺|14|6
+n_twin|感測器模擬與數位孿生|14|6
+n_robot|機器人視覺|14|6
+n_xray|X 光與超音波成像|14|5
+n_edge|邊緣 AI 部署|14|6
+n_hud|AR-HUD 校正|14|4
+n_opc|計算微影|14|4
+n_env|排放監測|14|4
+n_agri|高光譜農產品分級|14|4`;
+
+const LINKS = `
+svc 3: l_whole l_retail f_bank f_ins f_re h8_food h8_hotel i_sw i_tel p_gov p_edu p_health l_ship
+svc 2: l_air l_land h8_tour h8_media h8_ent h8_sport h8_personal f_sec i_cloud i_ai l_ecom
+ind 3: mfg e_power e_constr e_mining e_water
+mfg 3: s_foundry h_server h_pc t_petro t_steel t_mach h_comp s_osat s_design t_food
+mfg 2: h_pcb h_disp h_optics h_net h_edge h_aoi h_auto s_mem s_equip t_robot t_auto t_bike t_textile t_plastic t_pharma t_meddev
+mfg 1: svc agr
+agr 3: a_crop a_fruit a_fish a_live a_forest
+agr 2: a_smart a_sort
+s_foundry 2: tsmc umc psmc vis
+s_design 2: mtk nvt rtk
+s_mem 2: winbond nanya mxic
+s_osat 2: ase kyec ardentec s_adv
+s_equip 2: amat asml kla lam yxlon
+tsmc 2: s_adv s_design s_equip s_mat r_hsp r_ctsp r_stsp
+umc 1: r_hsp r_stsp
+psmc 1: r_hsp
+vis 1: r_hsp
+mtk 1: r_hsp
+nvt 1: r_hsp
+rtk 1: r_hsp
+winbond 1: r_ctsp
+mxic 1: r_hsp
+ase 1: r_khh
+kyec 1: r_hsp
+ardentec 1: r_hsp
+amat 1: r_hsp
+asml 1: r_hsp
+kla 1: r_hsp
+lam 1: r_ctsp r_hsp
+yxlon 1: r_hsp
+s_mat 1: t_petro
+s_adv 2: h_server
+h_server 2: foxconn quanta wistron wiwynn inventec nvidia
+h_pc 2: asus acer compal pegatron quanta
+h_comp 2: delta liteon yageo h_pcb
+h_pcb 2: unimicron
+h_disp 2: auo innolux
+auo 1: r_ctsp r_hsp
+innolux 1: r_stsp
+h_optics 2: largan
+largan 1: r_ctsp r_tcmach
+h_edge 2: advantech adlink
+advantech 1: r_taipei
+adlink 1: r_taoyuan
+h_aoi 2: utechzone tri machvision
+utechzone 1: r_taipei
+tri 1: r_taipei
+h_auto 2: eli
+foxconn 1: r_taipei h_comp t_robot
+t_petro 2: fpg cpc t_plastic t_textile
+fpg 1: r_mailiao
+t_steel 2: csc t_mach t_auto t_bike
+csc 1: r_khh
+t_mach 2: hiwin t_robot
+hiwin 1: r_tcmach
+t_robot 2: techman solomon hiwin
+techman 1: r_taoyuan
+solomon 1: r_taipei
+t_bike 2: giant
+giant 1: r_tcmach
+t_food 2: unipres a_crop a_fruit a_fish a_live
+unipres 1: l_711 r_stsp
+t_pharma 1: t_meddev p_health
+e_power 2: taipower e_renew e_grid e_gas
+e_gas 2: cpc
+e_constr 2: e_infra f_re
+e_water 1: p_gov
+e_renew 1: r_khh r_mailiao
+l_whole 2: l_retail l_ecom
+l_retail 2: pxmart l_711
+l_ship 2: evergreen yangming l_port
+l_port 1: r_khh l_land
+l_air 1: evergreen
+f_bank 2: ctbc f_fintech
+f_ins 2: cathay fubon
+f_re 2: f_prop cathay
+f_sec 1: fubon ctbc
+h8_hotel 2: h8_tour
+h8_tour 1: r_east h8_food
+i_tel 2: cht i_cloud
+i_sw 2: i_saas i_sec i_game i_ai
+i_ai 2: kneron turing metai linker i_sales
+nvidia 2: metai linker i_ai r_taipei
+metai 1: r_hsp
+kneron 1: r_taipei
+turing 1: r_taipei
+p_edu 2: p_univ
+p_univ 2: nyust
+p_itri 1: r_hsp p_univ
+p_nchc 1: r_ctsp r_hsp
+p_nstc 2: r_hsp r_ctsp r_stsp
+p_gov 2: p_nstc p_epb p_defense p_artc p_itri p_nchc
+p_artc 1: h_auto
+p_health 1: t_meddev
+a_crop 1: r_chiayi
+a_fruit 1: r_chiayi
+a_smart 2: a_crop
+a_sort 2: a_fruit a_crop
+r_nantun 1: r_ctsp r_tcmach
+j_process 2: s_foundry s_mem t_petro h_disp
+j_equip 2: s_foundry s_equip s_mem s_osat
+j_test 2: s_osat ardentec kyec winbond
+j_fw 2: h_server h_net h_edge h_auto
+j_algo 2: h_aoi h_optics s_equip t_robot
+j_sw 2: i_sw i_saas f_fintech h_server
+j_ai 2: i_ai s_design nvidia h_edge
+j_fae 2: s_equip yxlon h_edge
+j_data 2: f_bank l_ecom i_cloud
+j_sim 2: turing metai asml
+j_sales 2: i_sales l_whole f_ins
+j_ops 2: s_foundry t_food l_retail h8_food
+you 3: k_photo k_field k_cuda k_trt k_bit k_seg k_eval
+you 2: k_hyper k_modbus k_jetson k_cpp k_prereg k_gamma r_nantun
+you 1: k_can k_bench k_gate k_pyqt k_agent nyust
+k_photo 2: k_gamma k_field
+k_modbus 1: k_bench k_can
+k_cuda 2: k_trt k_cpp
+k_trt 2: k_jetson k_bit
+k_eval 2: k_prereg k_gate k_seg
+k_field 1: p_epb
+k_bench 1: j_equip j_test
+k_modbus 1: j_fw
+k_cpp 1: j_sw
+k_agent 1: j_ai
+n_semi 2: k_photo k_eval k_seg k_cuda amat kla asml s_equip
+n_aoi 2: k_photo k_seg k_field utechzone largan h_aoi tri
+n_twin 2: k_photo k_eval k_cuda turing metai nvidia delta
+n_robot 2: k_seg k_jetson k_modbus k_can hiwin solomon techman
+n_xray 2: k_photo k_hyper k_seg yxlon
+n_edge 2: k_trt k_cuda k_bit k_jetson kneron mtk advantech nvidia
+n_hud 2: k_gamma k_photo eli
+n_opc 2: k_cuda k_bit k_cpp asml
+n_env 2: k_field k_photo k_seg k_pyqt
+n_env 1: p_epb
+n_agri 2: k_hyper
+n_agri 1: a_sort a_smart
+n_semi 1: j_algo j_fae
+n_aoi 1: j_algo
+n_twin 1: j_sim
+n_edge 1: j_ai
+n_robot 1: j_algo`;
+
+// ---------- parse
+const nodes = RAW.trim().split('\n').map(l=>{const [id,label,c,w]=l.split('|');return {id,label,c:isNaN(+c)?c:+c,w:+w};});
+const byId = Object.fromEntries(nodes.map(n=>[n.id,n]));
+const seen = new Set(); const links=[];
+LINKS.trim().split('\n').forEach(line=>{
+  const m=line.match(/^(\S+)\s+([\d.]+):\s*(.+)$/); if(!m) return;
+  const [,s,w,ts]=m;
+  ts.trim().split(/\s+/).forEach(t=>{
+    if(!byId[s]||!byId[t]||s===t) return;
+    const key=[s,t].sort().join('|'); if(seen.has(key)) return; seen.add(key);
+    links.push({source:s,target:t,w:+w});
+  });
+});
+
+// ---------- adjacency + BFS from you
+const adj={}; nodes.forEach(n=>adj[n.id]=[]);
+links.forEach(l=>{adj[l.source].push(l.target); adj[l.target].push(l.source);});
+const hop={you:0}, parent={}; const qq=['you'];
+while(qq.length){const u=qq.shift(); adj[u].forEach(v=>{if(hop[v]===undefined){hop[v]=hop[u]+1;parent[v]=u;qq.push(v);}});}
+
+// ---------- stats
+const cnt = c => nodes.filter(n=>n.c===c).length;
+const within = k => nodes.filter(n=>n.id!=='you'&&hop[n.id]<=k).length;
+document.getElementById('stats').innerHTML =
+  `<span><b>${nodes.length}</b> 個節點</span><span><b>${links.length}</b> 條連線</span><span><b>${ORDER.length-1}</b> 個群集</span>`+
+  `<span>距離 1 跳：<b>${within(1)}</b></span><span>2 跳：<b>${within(2)-within(1)}</b></span><span>3 跳以上：<b>${nodes.length-1-within(2)}</b></span>`;
+
+// ---------- layout
+const W=2000,H=1500;
+const center={0:[1000,880],M:[1000,330],1:[230,1300],2:[600,330],3:[1400,330],4:[250,640],5:[230,1010],6:[1740,1250],7:[1800,880],8:[1400,1420],9:[1760,560],10:[620,1410],11:[1000,90],12:[1000,600],13:[1000,1150],14:[1000,880]};
+const pin={mfg:[1000,330],ind:[470,820],agr:[360,1160],svc:[1540,900],you:[1000,880],n_aoi:[700,770],n_robot:[640,875],n_xray:[690,985],n_hud:[790,1060],n_agri:[540,1040],n_semi:[1300,770],n_edge:[1360,875],n_opc:[1310,985],n_twin:[1210,1060],n_env:[1460,1040]};
+const r = n => n.c===0?26 : Math.max(5, Math.sqrt(n.w)*3.1);
+nodes.forEach((n,i)=>{const [x,y]=center[n.c]; const a=i*2.399; n.x=x+Math.cos(a)*(40+i%7*12); n.y=y+Math.sin(a)*(40+i%5*12);});
+Object.entries(pin).forEach(([id,[x,y]])=>{const n=byId[id]; n.x=n.fx=x; n.y=n.fy=y;});
+
+const sim=d3.forceSimulation(nodes)
+  .force('link',d3.forceLink(links).id(d=>d.id).distance(l=>l.source.c===l.target.c?80:190).strength(l=>l.source.c===l.target.c?.45:.035))
+  .force('charge',d3.forceManyBody().strength(-330).distanceMax(500))
+  .force('x',d3.forceX(d=>center[d.c][0]).strength(d=>d.c===11?.08:.2))
+  .force('y',d3.forceY(d=>center[d.c][1]).strength(d=>d.c===11?.08:.2))
+  .force('collide',d3.forceCollide(d=>r(d)+20).iterations(3))
+  .stop();
+for(let i=0;i<650;i++) sim.tick();
+nodes.forEach(n=>{n.x=Math.max(60,Math.min(W-60,n.x)); n.y=Math.max(50,Math.min(H-40,n.y));});
+
+// ---------- draw
+const svg=d3.select('#map'); const root=svg.append('g');
+const gL=root.append('g'), gN=root.append('g');
+const curve=d=>{const sx=d.source.x,sy=d.source.y,tx=d.target.x,ty=d.target.y,dx=tx-sx,dy=ty-sy,len=Math.hypot(dx,dy)||1,k=.16*len;
+  return `M${sx},${sy} Q${(sx+tx)/2-dy/len*k},${(sy+ty)/2+dx/len*k} ${tx},${ty}`;};
+const linkSel=gL.selectAll('path').data(links).join('path').attr('d',curve).attr('fill','none')
+  .attr('stroke',d=>color(d.source.c===0?d.target.c:d.source.c))
+  .attr('stroke-width',d=>0.5+d.w*0.85).attr('stroke-opacity',d=>d.source.c==='M'||d.target.c==='M'?.35:.5);
+
+const nodeSel=gN.selectAll('g').data(nodes).join('g').attr('class','node')
+  .attr('transform',d=>`translate(${d.x},${d.y})`).attr('tabindex',0).attr('role','button')
+  .attr('aria-label',d=>`${d.label}，距離你 ${hop[d.id]} 跳`);
+nodeSel.append('circle').attr('class','body').attr('r',r)
+  .attr('fill',d=>d.c===0?'var(--bg)':color(d.c)).attr('stroke',d=>d.c===0?'var(--you)':'var(--bg)').attr('stroke-width',d=>d.c===0?5:1.2);
+nodeSel.filter(d=>d.c===0).append('circle').attr('r',14).attr('fill','var(--you)');
+const baseFont=d=>d.c===0?26 : d.c==='M'?24 : d.w>=12?19 : d.w>=6?15 : d.w>=4?13 : 11.5;
+const labelSel=nodeSel.append('text').attr('class','node-label').attr('text-anchor','middle')
+  .attr('font-weight',d=>(d.c===0||d.c==='M'||d.w>=6)?700:400).text(d=>d.label);
+
+let k=1, allLabels=false;
+function relabel(){
+  const f=Math.min(2.6,Math.max(1,0.8/k));
+  const minW = allLabels?0 : k<0.45?12 : k<0.65?6 : k<0.95?4 : 0;
+  labelSel.attr('font-size',d=>baseFont(d)*f).attr('dy',d=>-r(d)-5*f).attr('stroke-width',3*f)
+    .attr('display',d=>(d.c===0||d.c==='M'||d.c===14||d.w>=minW)?null:'none');
+}
+
+// ---------- zoom
+const zoom=d3.zoom().scaleExtent([0.25,5]).on('zoom',e=>{root.attr('transform',e.transform); k=e.transform.k; relabel();});
+svg.call(zoom).on('dblclick.zoom',null);
+function fit(dur=600){
+  const box=svg.node().getBoundingClientRect(); const pad=16;
+  const wide=box.width>900;
+  const padL=wide?(document.getElementById('legend').offsetWidth+20):pad, padR=wide?(document.getElementById('inspector').offsetWidth+20):pad;
+  const padT=wide?pad:56;
+  const s=Math.min((box.width-padL-padR)/W,(box.height-padT-pad)/H);
+  const t=d3.zoomIdentity.translate(padL+(box.width-padL-padR-W*s)/2,padT+(box.height-padT-pad-H*s)/2).scale(s);
+  svg.transition().duration(dur).call(zoom.transform,t);
+}
+function focusOn(n,scale=1.3,dur=700){
+  const box=svg.node().getBoundingClientRect();
+  const t=d3.zoomIdentity.translate(box.width/2-n.x*scale,box.height/2-n.y*scale).scale(scale);
+  svg.transition().duration(dur).call(zoom.transform,t);
+}
+
+// ---------- highlight & inspector
+const nb={}; nodes.forEach(n=>nb[n.id]=new Set([n.id,...adj[n.id]]));
+let selected=null, isolated=null;
+function pathTo(id){const p=[id]; while(p[0]!=='you'&&parent[p[0]]) p.unshift(parent[p[0]]); return p;}
+function applyState(hover){
+  linkSel.classed('path-edge',false);
+  if(selected){
+    const p=pathTo(selected.id), ps=new Set(p), pe=new Set(); for(let i=1;i<p.length;i++) pe.add([p[i-1],p[i]].sort().join('|'));
+    const show=new Set([...nb[selected.id],...ps]);
+    nodeSel.classed('dim',n=>!show.has(n.id));
+    linkSel.classed('dim',l=>!(l.source.id===selected.id||l.target.id===selected.id||pe.has([l.source.id,l.target.id].sort().join('|'))))
+      .classed('path-edge',l=>pe.has([l.source.id,l.target.id].sort().join('|')));
+    return;
+  }
+  const h=hover||null;
+  if(h){ nodeSel.classed('dim',n=>!nb[h.id].has(n.id)); linkSel.classed('dim',l=>l.source.id!==h.id&&l.target.id!==h.id); return; }
+  if(isolated!==null){ nodeSel.classed('dim',n=>n.c!==isolated&&n.c!==0); linkSel.classed('dim',l=>!(l.source.c===isolated||l.target.c===isolated)); return; }
+  nodeSel.classed('dim',false); linkSel.classed('dim',false);
+}
+const insp=document.getElementById('inspector');
+function pill(c){return `<span class="pill" style="background:${color(c)}">${CL[c].n}</span>`;}
+function inspect(n){
+  if(!n){
+    insp.innerHTML=`<h3>點選任一節點</h3><div class="meta">它到你的路徑會顯示在這裡</div>
+      <p class="empty">可以先點 <b>台積電</b>、<b>國泰金</b>或<b>上銀</b>，比較它們的跳數。綠色利基節點離你的技能只有一步，服務業大多在四步以上。</p>`;
+    return;
+  }
+  const p=pathTo(n.id);
+  const nbr=adj[n.id].map(id=>byId[id]).sort((a,b)=>hop[a.id]-hop[b.id]||b.w-a.w);
+  insp.innerHTML=`<h3>${n.label}</h3><div class="meta">${pill(n.c)} ${n.id==='you'?'起點':'距離你 '+hop[n.id]+' 跳'} · ${adj[n.id].length} 條連線</div>
+   ${n.id==='you'?'':`<div class="path"><b>最短路徑：</b><br>${p.map(id=>`<span>${byId[id].label}</span>`).join(' → ')}</div>`}
+   <b>相連節點</b><ul>${nbr.map(m=>`<li>${m.label}</li>`).join('')}</ul>`;
+}
+nodeSel.on('mouseenter',(e,d)=>{if(!selected) applyState(d);})
+  .on('mouseleave',()=>{if(!selected) applyState(null);})
+  .on('click',(e,d)=>{e.stopPropagation(); selected=(selected&&selected.id===d.id)?null:d; inspect(selected); applyState(null);})
+  .on('keydown',(e,d)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault(); selected=(selected&&selected.id===d.id)?null:d; inspect(selected); applyState(null);}});
+svg.on('click',()=>{selected=null; inspect(null); applyState(null);});
+
+// ---------- legend
+const leg=document.getElementById('legend');
+const avg=c=>{const xs=nodes.filter(n=>n.c===c&&n.id!=='you').map(n=>hop[n.id]); return xs.length?xs.reduce((a,b)=>a+b,0)/xs.length:0;};
+leg.innerHTML=`<button class="toggle" type="button" aria-expanded="false">圖例 ▾</button><table><thead><tr><th>編號</th><th>群集名稱</th><th class="n">節點</th><th class="n">跳數</th></tr></thead><tbody>${
+  ORDER.map((c,i)=>`<tr class="row" tabindex="0" data-c="${c}"><td><span class="sw" style="background:${color(c)}">${c===0?'':c==='M'?'0':c}</span></td><td>${CL[c].n}</td><td class="n">${cnt(c)}</td><td class="n">${c===0?'—':avg(c).toFixed(1)}</td></tr>`).join('')
+}</tbody></table>`;
+leg.querySelector('.toggle').addEventListener('click',e=>{const o=leg.classList.toggle('open'); e.currentTarget.setAttribute('aria-expanded',o);});
+leg.querySelectorAll('tr.row').forEach(tr=>{
+  const act=()=>{const raw=tr.dataset.c; const c=isNaN(+raw)?raw:+raw; isolated=(isolated===c)?null:c; selected=null; inspect(null);
+    leg.querySelectorAll('tr.row').forEach(x=>x.classList.toggle('on',x===tr&&isolated!==null)); applyState(null);};
+  tr.addEventListener('click',act); tr.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();act();}});
+});
+
+// ---------- distance chart
+const dist=document.getElementById('dist');
+const rows=ORDER.filter(c=>c!==0).map(c=>({c,a:avg(c)})).sort((a,b)=>a.a-b.a);
+const maxA=Math.max(...rows.map(r=>r.a));
+rows.forEach(({c,a})=>{const el=document.createElement('div'); el.className='drow';
+  el.innerHTML=`<div class="lab"><i style="background:${color(c)}"></i>${CL[c].n}</div><div class="track"><span style="width:${(a/maxA*100).toFixed(1)}%;background:${color(c)}"></span></div><div class="num">${a.toFixed(2)} 跳</div>`;
+  dist.appendChild(el);});
+
+// ---------- search & buttons
+const dl=document.getElementById('names'); nodes.forEach(n=>{const o=document.createElement('option'); o.value=n.label; dl.appendChild(o);});
+const q=document.getElementById('q');
+function find(){const v=q.value.trim().toLowerCase(); if(!v) return;
+  const n=nodes.find(n=>n.label.toLowerCase()===v)||nodes.find(n=>n.label.toLowerCase().includes(v)||n.id.includes(v));
+  if(n){selected=n; inspect(n); applyState(null); focusOn(n,1.4);}}
+q.addEventListener('change',find); q.addEventListener('keydown',e=>{if(e.key==='Enter') find();});
+document.getElementById('fit').addEventListener('click',()=>{selected=null;isolated=null;inspect(null);applyState(null);leg.querySelectorAll('tr.row').forEach(x=>x.classList.remove('on'));fit();});
+document.getElementById('you').addEventListener('click',()=>{selected=byId.you; inspect(byId.you); applyState(null); focusOn(byId.you,0.9);});
+const lb=document.getElementById('labels'); lb.addEventListener('click',()=>{allLabels=!allLabels; lb.setAttribute('aria-pressed',allLabels); relabel();});
+
+inspect(null); fit(0); relabel();
+window.addEventListener('resize',()=>fit(0));
+})();
+</script>
+
+</body>
+</html>

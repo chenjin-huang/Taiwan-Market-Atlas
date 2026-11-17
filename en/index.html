@@ -1,0 +1,708 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Taiwan Market Atlas</title>
+<meta name="description" content="A 200-node network atlas of Taiwan's economy: sectors, employers, science parks, job families, skills and niches, with each part's distance from Chen-Jin Huang.">
+<meta property="og:title" content="Taiwan Market Atlas">
+<meta property="og:description" content="A 200-node network atlas of Taiwan's economy: sectors, employers, science parks, job families, skills and niches, with each part's distance from Chen-Jin Huang.">
+<meta property="og:type" content="website">
+<style>html{-webkit-text-size-adjust:100%}body{margin:0;font-size:14px}img{max-width:100%}[hidden]{display:none!important}
+.lang{align-self:flex-end;font-size:13px;color:var(--muted)}.lang a{color:inherit}</style>
+</head>
+<body>
+
+<style>
+/* Layout: full-width zoomable co-occurrence atlas with a floating legend and a node inspector, followed by a computed distance-from-you chart and a short reading. */
+:root{
+  --bg:#ffffff; --fg:#1b1f24; --muted:#5b6570; --line:#e2e6eb; --panel:#f5f7f9; --panel-strong:#ffffffee; --you:#111418; --hl:#111418;
+  --cM:#8C96A3; --c1:#8BC34A; --c2:#F07F2E; --c3:#E0559A; --c4:#9C6B3E; --c5:#D4B21E; --c6:#5DADE2; --c7:#2E5FA8;
+  --c8:#B37FD9; --c9:#26B5B5; --c10:#7D8F69; --c11:#7C83D6; --c12:#E57373; --c13:#0F766E; --c14:#22B573;
+  --sans:Arial,Helvetica,sans-serif; --mono:ui-monospace,Menlo,monospace; --label:Arial,"Helvetica Neue",Helvetica,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121519; --fg:#e7eaee; --muted:#98a2ad; --line:#2a3037; --panel:#1a1e23; --panel-strong:#1a1e23ee; --you:#f3f5f7; --hl:#f3f5f7; --c7:#5B8BD6; color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#121519; --fg:#e7eaee; --muted:#98a2ad; --line:#2a3037; --panel:#1a1e23; --panel-strong:#1a1e23ee; --you:#f3f5f7; --hl:#f3f5f7; --c7:#5B8BD6; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:15px;line-height:1.55}
+.wrap{max-width:1400px;margin:0 auto;padding-block:26px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:26px}
+header{display:flex;flex-direction:column;gap:6px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font-size:clamp(24px,3.4vw,36px);line-height:1.12;margin:0;font-weight:700;text-wrap:balance}
+.lede{max-width:78ch;color:var(--muted);margin:0}
+h2{font-size:19px;margin:0 0 10px;font-weight:600;text-wrap:balance}
+.stats{display:flex;flex-wrap:wrap;gap:8px 22px;font-family:var(--mono);font-size:13px;color:var(--muted)}
+.stats b{color:var(--fg);font-weight:500}
+
+.atlas{position:relative;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--bg)}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line);background:var(--panel)}
+.toolbar input{font:inherit;font-size:14px;padding:6px 10px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--fg);min-width:0;flex:1 1 220px;max-width:340px}
+.toolbar button{font:inherit;font-size:13px;padding:6px 11px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--fg);cursor:pointer}
+.toolbar button[aria-pressed="true"]{border-color:var(--fg)}
+.toolbar button:focus-visible,.toolbar input:focus-visible{outline:2px solid var(--fg);outline-offset:1px}
+.toolbar .hint{font-size:12.5px;color:var(--muted);margin-left:auto}
+.stage{position:relative;height:min(80vh,860px);min-height:520px}
+svg#map{display:block;width:100%;height:100%;cursor:grab;touch-action:none}
+svg#map:active{cursor:grabbing}
+.node-label{font-family:var(--label);fill:var(--fg);paint-order:stroke;stroke:var(--bg);stroke-linejoin:round;pointer-events:none}
+.dim{opacity:.07}
+.path-edge{stroke:var(--hl)!important;stroke-opacity:1!important}
+g.node{cursor:pointer}
+g.node:focus{outline:none}
+g.node:focus-visible circle.body{stroke:var(--fg);stroke-width:3}
+
+.legend{position:absolute;top:10px;left:10px;background:var(--panel-strong);border:1px solid var(--line);border-radius:5px;padding:6px 8px;font-family:var(--label);font-size:11.5px;line-height:1.3;max-height:calc(100% - 20px);overflow:auto;width:236px}
+.legend table{border-collapse:collapse;width:100%}
+.legend th{text-align:left;font-weight:700;padding:2px 4px 5px;white-space:nowrap}
+.legend th.n,.legend td.n{text-align:right;font-variant-numeric:tabular-nums}
+.legend td{padding:2px 4px;vertical-align:middle}
+.legend tr.row{cursor:pointer}
+.legend tr.row:hover td,.legend tr.row.on td{background:var(--line)}
+.legend tr.row:focus-visible{outline:2px solid var(--fg)}
+.sw{display:inline-grid;place-items:center;width:24px;height:16px;color:#fff;font-weight:700;font-size:11px}
+.legend .toggle{display:none;font:inherit;font-weight:700;background:none;border:0;color:var(--fg);padding:0;cursor:pointer}
+
+.inspector{position:absolute;top:10px;right:10px;width:270px;max-height:calc(100% - 20px);overflow:auto;background:var(--panel-strong);border:1px solid var(--line);border-radius:5px;padding:12px 14px;font-size:13.5px}
+.inspector h3{margin:0 0 2px;font-size:16px;line-height:1.25}
+.inspector .meta{font-family:var(--mono);font-size:12px;color:var(--muted);margin-bottom:8px}
+.inspector .path{font-size:13px;margin:6px 0 8px;line-height:1.5}
+.inspector .path span{white-space:nowrap}
+.inspector ul{margin:4px 0 0;padding-left:18px;columns:2;column-gap:14px;font-size:12.5px}
+.inspector li{break-inside:avoid}
+.inspector .empty{color:var(--muted)}
+.pill{display:inline-block;font-family:var(--mono);font-size:11.5px;padding:1px 7px;border-radius:10px;color:#fff;margin-right:4px}
+
+.dist{display:flex;flex-direction:column;gap:8px}
+.drow{display:grid;grid-template-columns:minmax(0,16rem) minmax(0,1fr) 7.5rem;gap:12px;align-items:center}
+.drow .lab{font-size:14px;min-width:0;display:flex;gap:8px;align-items:center}
+.drow .lab i{width:11px;height:11px;border-radius:50%;flex:none;display:inline-block}
+.track{height:14px;background:var(--line);border-radius:2px;position:relative;min-width:0}
+.track span{position:absolute;inset:0 auto 0 0;border-radius:2px}
+.drow .num{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:13px;text-align:right}
+.note{font-size:13px;color:var(--muted);max-width:80ch;margin:6px 0 0}
+
+.reading{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px 30px}
+.reading section{min-width:0}
+.reading h3{font-size:15px;margin:0 0 4px;font-weight:600}
+.reading p{margin:0}
+.bottom{background:var(--panel);border-radius:6px;padding:18px 20px}
+.bottom p{margin:0;max-width:85ch}
+.sources{font-size:12.5px;color:var(--muted)}
+.sources a{color:inherit}
+
+@media (max-width:900px){
+  .reading{grid-template-columns:minmax(0,1fr)}
+  .inspector{position:static;width:auto;max-height:none;border-width:1px 0 0;border-radius:0}
+  .legend{width:auto;right:10px;max-height:46px;overflow:hidden}
+  .legend.open{max-height:calc(100% - 20px);overflow:auto}
+  .legend .toggle{display:block}
+  .drow{grid-template-columns:minmax(0,1fr) 6.5rem}
+  .drow .track{grid-column:1 / -1;order:3}
+  .toolbar .hint{margin-left:0;flex-basis:100%}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="lang"><a href="../">繁體中文</a> · English</span>
+    <span class="eyebrow">Taiwan, whole market · co-occurrence atlas · Nov 2026</span>
+    <h1>Taiwan Market Atlas, with you in it</h1>
+    <p class="lede">This map covers the whole Taiwan economy: the three GDP sectors, about a dozen industry clusters, the major employers, the science parks, the job families they hire for, your skills, and the niches where those skills meet demand. Click any node to see its shortest path to you. The number of hops is how far that part of the market is from you.</p>
+    <div class="stats" id="stats"></div>
+  </header>
+
+  <div class="atlas">
+    <div class="toolbar">
+      <input id="q" type="search" placeholder="Find a company, sector, skill… (e.g. TSMC, 台中, CUDA)" aria-label="Find a node" list="names">
+      <datalist id="names"></datalist>
+      <button id="fit" type="button">Fit all</button>
+      <button id="you" type="button">Focus on you</button>
+      <button id="labels" type="button" aria-pressed="false">All labels</button>
+      <span class="hint">Scroll or pinch to zoom · drag to pan · click a node for its path to you</span>
+    </div>
+    <div class="stage">
+      <svg id="map" role="img" aria-label="Network atlas of Taiwan's economy and Jimmy's position in it"></svg>
+      <div class="legend" id="legend"></div>
+      <aside class="inspector" id="inspector" aria-live="polite"></aside>
+    </div>
+  </div>
+
+  <section>
+    <h2>How far each part of the market sits from you</h2>
+    <div class="dist" id="dist"></div>
+    <p class="note">The page computes this from the graph. For each cluster, it takes the average shortest-path length (hops) from your node to every node in that cluster. A short bar means that part of the market can use what you already have. A long bar means you would need intermediate steps first, such as another skill, a different role or a different employer.</p>
+  </section>
+
+  <section>
+    <h2>What the atlas says</h2>
+    <div class="reading">
+      <section>
+        <h3>Most of the map is out of reach, and that's normal</h3>
+        <p>Finance, retail, catering, tourism and real estate make up most of the services side's 55.1% of GDP, and on average they sit five or more hops from you. Nothing in them uses sensor physics or GPU kernels. Distance on this map measures how much of your skill set a cluster can use, not how valuable the cluster is.</p>
+      </section>
+      <section>
+        <h3>The large employers are one step removed</h3>
+        <p>TSMC, Foxconn and the memory makers mostly hire process, equipment and test engineers. From your node, they're reached through a job family, not through your skills directly. That's why those roles can feel like a detour. The roles are real, but they weren't built for your skills.</p>
+      </section>
+      <section>
+        <h3>The niches are the shortcut</h3>
+        <p>The ten green niches are the only nodes that link your skills to employers in a single step. Most of them draw on two or three of your skill areas. They sit mostly in Hsinchu and Taipei. Central Taiwan contributes HIWIN, Largan, ELI, NCHC Taichung and the science park.</p>
+      </section>
+      <section>
+        <h3>Taichung is your strongest local cluster</h3>
+        <p>From your Nantun node, the shortest routes lead through the Taichung precision-machinery corridor and the Central Taiwan Science Park, to HIWIN, Largan, Giant, Winbond and AUO. If you'd rather not relocate, start there.</p>
+      </section>
+      <section>
+        <h3>Supply chains connect clusters that seem unrelated</h3>
+        <p>Petrochemicals feed semiconductor materials. Steel feeds machine tools, and machine tools feed robotics. Advanced packaging feeds AI servers. Because of these links, a role in robot vision or AOI still lets you reach semiconductors later.</p>
+      </section>
+      <section>
+        <h3>The thin lines are where independent products start</h3>
+        <p>Hyperspectral food grading (agriculture, 1.4% of GDP) and environmental emission monitoring (EPB) each have exactly one link to the market and one to you. The big employers ignore niches like these. A solo developer with a working instrument can own one.</p>
+      </section>
+    </div>
+  </section>
+
+  <div class="bottom"><p><strong>Bottom line.</strong> Of the 200 nodes in this model of Taiwan's market, only the green niches link your three skill clusters to an employer in one step. Your search pool is small, and the employers in it value your skills more than most. That position, a bridge between sensor physics, GPU runtime and evaluation design, is also the starting point for an architect role or an independent one.</p></div>
+
+  <p class="sources">How this was built: the GDP shares are the figures you supplied. The sector structure follows Taiwan's standard industry sections. Employers, science parks and niches come from public company information and this project's verified company list (v2, 2026-11-16). Node sizes and link weights are a structural model meant to show relationships. They aren't measured trade flows or headcounts. Further context: <a href="https://uanalyze.com.tw/articles/6519143552" target="_blank" rel="noopener">104 AI job data (Nov 2025)</a> · <a href="https://www.ctee.com.tw/news/20260110700298-430401" target="_blank" rel="noopener">Commercial Times employment estimates (2026-01-10)</a>.</p>
+</div>
+
+<script src="../assets/d3.min.js"></script>
+<script>
+(function(){
+const CL = {
+  0:{n:'you (bridge node)',k:'you'},
+  M:{n:'GDP sectors',k:'cM'},
+  1:{n:'agriculture, forestry & fishery',k:'c1'},
+  2:{n:'semiconductors',k:'c2'},
+  3:{n:'ICT hardware & electronics',k:'c3'},
+  4:{n:'traditional manufacturing',k:'c4'},
+  5:{n:'energy, utilities & construction',k:'c5'},
+  6:{n:'trade & logistics',k:'c6'},
+  7:{n:'finance & real estate',k:'c7'},
+  8:{n:'hospitality, food & culture',k:'c8'},
+  9:{n:'software, telecom & AI services',k:'c9'},
+ 10:{n:'public, health & research',k:'c10'},
+ 11:{n:'regions & science parks',k:'c11'},
+ 12:{n:'job families',k:'c12'},
+ 13:{n:'your skills',k:'c13'},
+ 14:{n:'target niches (rare demand)',k:'c14'}
+};
+const ORDER=['M',1,2,3,4,5,6,7,8,9,10,11,12,13,14,0];
+const color = c => `var(--${CL[c].k})`;
+
+const RAW = `
+you|YOU · 黃辰晉|0|40
+svc|SERVICES 55.1%|M|55.1
+ind|INDUSTRY 43.5%|M|43.5
+mfg|MANUFACTURING 38.6%|M|38.6
+agr|AGRICULTURE 1.4%|M|1.4
+a_crop|rice & crops|1|4
+a_fruit|fruit & tea|1|4
+a_fish|fisheries & aquaculture|1|4
+a_live|livestock|1|3
+a_forest|forestry|1|2
+a_sort|optical sorting & grading|1|3
+a_smart|smart agriculture|1|3
+s_foundry|foundry|2|14
+tsmc|TSMC 台積電|2|30
+umc|UMC 聯電|2|8
+psmc|PSMC 力積電|2|5
+vis|VIS 世界先進|2|5
+s_design|IC design|2|12
+mtk|MediaTek 聯發科|2|12
+nvt|Novatek 聯詠|2|6
+rtk|Realtek 瑞昱|2|6
+s_mem|memory|2|6
+winbond|Winbond 華邦|2|6
+nanya|Nanya 南亞科|2|5
+mxic|Macronix 旺宏|2|4
+s_osat|packaging & test|2|9
+ase|ASE 日月光|2|10
+kyec|KYEC 京元電|2|5
+ardentec|Ardentec 欣銓|2|4
+s_equip|equipment & metrology|2|9
+amat|Applied Materials TW|2|6
+asml|ASML TW|2|7
+kla|KLA TW|2|5
+lam|Lam Research TW|2|4
+yxlon|Comet Yxlon|2|3
+s_mat|materials & chemicals|2|5
+s_adv|advanced packaging (CoWoS)|2|7
+h_server|AI servers|3|14
+foxconn|Foxconn 鴻海|3|18
+quanta|Quanta 廣達|3|10
+wistron|Wistron 緯創|3|8
+wiwynn|Wiwynn 緯穎|3|6
+inventec|Inventec 英業達|3|5
+h_pc|PCs & notebooks|3|8
+asus|ASUS 華碩|3|7
+acer|Acer 宏碁|3|5
+compal|Compal 仁寶|3|5
+pegatron|Pegatron 和碩|3|6
+h_comp|electronic components|3|8
+delta|Delta 台達電|3|8
+liteon|Lite-On 光寶|3|4
+yageo|Yageo 國巨|3|4
+h_pcb|PCB & substrates|3|6
+unimicron|Unimicron 欣興|3|5
+h_disp|display & optoelectronics|3|7
+auo|AUO 友達|3|5
+innolux|Innolux 群創|3|5
+h_optics|optics & lenses|3|6
+largan|Largan 大立光|3|6
+h_net|networking & comms|3|5
+h_edge|industrial PC & edge AI|3|6
+advantech|Advantech 研華|3|6
+adlink|ADLINK 凌華|3|4
+h_aoi|AOI & inspection systems|3|5
+utechzone|Utechzone 由田|3|4
+tri|TRI 德律|3|4
+machvision|Machvision 牧德|3|3
+h_auto|automotive electronics|3|4
+eli|ELI 怡利電子|3|3
+t_petro|petrochemicals|4|9
+fpg|Formosa Plastics 台塑|4|8
+t_steel|steel & metals|4|7
+csc|China Steel 中鋼|4|6
+t_mach|machine tools & machinery|4|8
+hiwin|HIWIN 上銀|4|6
+t_robot|robotics & automation|4|6
+techman|Techman 達明|4|4
+solomon|Solomon 所羅門|4|4
+t_auto|auto parts|4|5
+t_bike|bicycles|4|4
+giant|Giant 捷安特|4|4
+t_textile|textiles & functional fabrics|4|5
+t_food|food & beverage manufacturing|4|6
+unipres|Uni-President 統一|4|6
+t_plastic|plastics & rubber|4|4
+t_pharma|pharma & biotech|4|5
+t_meddev|medical devices|4|4
+e_power|power generation|5|7
+taipower|Taipower 台電|5|6
+e_renew|offshore wind & solar|5|6
+e_gas|oil & gas|5|5
+cpc|CPC 中油|5|5
+e_water|water supply|5|3
+e_constr|construction|5|7
+e_infra|public infrastructure|5|5
+e_mining|mining & quarrying|5|2
+e_grid|grid & energy storage|5|4
+l_whole|wholesale|6|10
+l_retail|retail|6|9
+pxmart|PX Mart 全聯|6|4
+l_711|7-ELEVEN 統一超商|6|4
+l_ecom|e-commerce|6|5
+l_ship|shipping|6|6
+evergreen|Evergreen 長榮|6|5
+yangming|Yang Ming 陽明|6|4
+l_air|airlines & air cargo|6|4
+l_port|ports & warehousing|6|4
+l_land|land transport|6|4
+f_bank|banking|7|9
+ctbc|CTBC 中信|7|5
+f_ins|insurance|7|8
+cathay|Cathay 國泰|7|6
+fubon|Fubon 富邦|7|6
+f_sec|securities & asset management|7|5
+f_re|real estate|7|8
+f_fintech|fintech|7|3
+f_prop|property management|7|3
+h8_food|restaurants & catering|8|7
+h8_hotel|hotels & accommodation|8|5
+h8_tour|tourism|8|5
+h8_media|media & publishing|8|3
+h8_ent|entertainment & arts|8|3
+h8_sport|sports & leisure|8|3
+h8_personal|personal services|8|4
+i_sw|software services|9|7
+i_cloud|cloud & data centers|9|6
+i_tel|telecom|9|6
+cht|Chunghwa Telecom 中華電信|9|5
+i_sec|cybersecurity|9|4
+i_game|games|9|4
+i_ai|AI services & startups|9|6
+kneron|Kneron 耐能|9|3
+turing|Turing Drive 台灣智慧駕駛|9|3
+metai|MetAI 宇見智能|9|3
+linker|Linker Vision 鑫蘊林科|9|3
+i_saas|SaaS & ERP|9|4
+i_sales|AI sales roles|9|3
+nvidia|NVIDIA Taiwan|9|7
+p_gov|public administration|10|6
+p_edu|education|10|6
+p_univ|universities|10|5
+nyust|NYUST 雲科大|10|3
+p_health|hospitals & healthcare|10|7
+p_itri|ITRI 工研院|10|5
+p_nchc|NCHC 國網中心|10|3
+p_artc|ARTC 車測中心|10|3
+p_nstc|NSTC · science park admin|10|3
+p_defense|defense industry|10|4
+p_epb|environmental agencies (EPB)|10|3
+r_hsp|Hsinchu Science Park|11|8
+r_ctsp|Central Taiwan Science Park|11|7
+r_stsp|Southern Taiwan Science Park|11|7
+r_taipei|Taipei Neihu · Nangang|11|6
+r_taoyuan|Taoyuan industrial belt|11|5
+r_tcmach|Taichung precision machinery|11|5
+r_mailiao|Yunlin Mailiao|11|4
+r_khh|Kaohsiung port & heavy industry|11|5
+r_east|Hualien · Taitung|11|3
+r_chiayi|Chiayi · Pingtung farmland|11|3
+r_nantun|Taichung Nantun (home)|11|3
+j_process|process engineer|12|7
+j_equip|equipment engineer|12|7
+j_test|test / product engineer|12|6
+j_fw|firmware engineer|12|5
+j_algo|vision algorithm engineer|12|6
+j_sw|software engineer|12|8
+j_ai|AI / ML engineer|12|6
+j_fae|field application engineer|12|5
+j_data|data scientist|12|4
+j_sim|simulation engineer|12|4
+j_sales|sales & BD|12|6
+j_ops|operators & technicians|12|7
+k_photo|photometric calibration|13|6
+k_gamma|20-segment gamma fit|13|4
+k_hyper|hyperspectral SWIR|13|5
+k_modbus|RS-485 / Modbus RTU|13|4
+k_can|SocketCAN|13|3
+k_bench|bench bring-up|13|3
+k_field|field validation 59.7%→2.2%|13|6
+k_cuda|CUDA kernels|13|6
+k_trt|TensorRT|13|6
+k_bit|bit-exact verification|13|5
+k_jetson|Jetson edge|13|4
+k_cpp|C++17 / RAII|13|5
+k_seg|instance segmentation|13|6
+k_eval|evaluation protocol design|13|6
+k_prereg|pre-registered benchmark|13|4
+k_gate|zero-init gate probe|13|3
+k_pyqt|PyQt6 instrument UI|13|3
+k_agent|LLM agent sandbox|13|3
+n_semi|semiconductor inspection|14|8
+n_aoi|AOI vision|14|6
+n_twin|sensor sim & digital twin|14|6
+n_robot|robot vision|14|6
+n_xray|X-ray & ultrasound imaging|14|5
+n_edge|edge AI deployment|14|6
+n_hud|AR-HUD calibration|14|4
+n_opc|computational lithography|14|4
+n_env|emission monitoring|14|4
+n_agri|hyperspectral food grading|14|4`;
+
+const LINKS = `
+svc 3: l_whole l_retail f_bank f_ins f_re h8_food h8_hotel i_sw i_tel p_gov p_edu p_health l_ship
+svc 2: l_air l_land h8_tour h8_media h8_ent h8_sport h8_personal f_sec i_cloud i_ai l_ecom
+ind 3: mfg e_power e_constr e_mining e_water
+mfg 3: s_foundry h_server h_pc t_petro t_steel t_mach h_comp s_osat s_design t_food
+mfg 2: h_pcb h_disp h_optics h_net h_edge h_aoi h_auto s_mem s_equip t_robot t_auto t_bike t_textile t_plastic t_pharma t_meddev
+mfg 1: svc agr
+agr 3: a_crop a_fruit a_fish a_live a_forest
+agr 2: a_smart a_sort
+s_foundry 2: tsmc umc psmc vis
+s_design 2: mtk nvt rtk
+s_mem 2: winbond nanya mxic
+s_osat 2: ase kyec ardentec s_adv
+s_equip 2: amat asml kla lam yxlon
+tsmc 2: s_adv s_design s_equip s_mat r_hsp r_ctsp r_stsp
+umc 1: r_hsp r_stsp
+psmc 1: r_hsp
+vis 1: r_hsp
+mtk 1: r_hsp
+nvt 1: r_hsp
+rtk 1: r_hsp
+winbond 1: r_ctsp
+mxic 1: r_hsp
+ase 1: r_khh
+kyec 1: r_hsp
+ardentec 1: r_hsp
+amat 1: r_hsp
+asml 1: r_hsp
+kla 1: r_hsp
+lam 1: r_ctsp r_hsp
+yxlon 1: r_hsp
+s_mat 1: t_petro
+s_adv 2: h_server
+h_server 2: foxconn quanta wistron wiwynn inventec nvidia
+h_pc 2: asus acer compal pegatron quanta
+h_comp 2: delta liteon yageo h_pcb
+h_pcb 2: unimicron
+h_disp 2: auo innolux
+auo 1: r_ctsp r_hsp
+innolux 1: r_stsp
+h_optics 2: largan
+largan 1: r_ctsp r_tcmach
+h_edge 2: advantech adlink
+advantech 1: r_taipei
+adlink 1: r_taoyuan
+h_aoi 2: utechzone tri machvision
+utechzone 1: r_taipei
+tri 1: r_taipei
+h_auto 2: eli
+foxconn 1: r_taipei h_comp t_robot
+t_petro 2: fpg cpc t_plastic t_textile
+fpg 1: r_mailiao
+t_steel 2: csc t_mach t_auto t_bike
+csc 1: r_khh
+t_mach 2: hiwin t_robot
+hiwin 1: r_tcmach
+t_robot 2: techman solomon hiwin
+techman 1: r_taoyuan
+solomon 1: r_taipei
+t_bike 2: giant
+giant 1: r_tcmach
+t_food 2: unipres a_crop a_fruit a_fish a_live
+unipres 1: l_711 r_stsp
+t_pharma 1: t_meddev p_health
+e_power 2: taipower e_renew e_grid e_gas
+e_gas 2: cpc
+e_constr 2: e_infra f_re
+e_water 1: p_gov
+e_renew 1: r_khh r_mailiao
+l_whole 2: l_retail l_ecom
+l_retail 2: pxmart l_711
+l_ship 2: evergreen yangming l_port
+l_port 1: r_khh l_land
+l_air 1: evergreen
+f_bank 2: ctbc f_fintech
+f_ins 2: cathay fubon
+f_re 2: f_prop cathay
+f_sec 1: fubon ctbc
+h8_hotel 2: h8_tour
+h8_tour 1: r_east h8_food
+i_tel 2: cht i_cloud
+i_sw 2: i_saas i_sec i_game i_ai
+i_ai 2: kneron turing metai linker i_sales
+nvidia 2: metai linker i_ai r_taipei
+metai 1: r_hsp
+kneron 1: r_taipei
+turing 1: r_taipei
+p_edu 2: p_univ
+p_univ 2: nyust
+p_itri 1: r_hsp p_univ
+p_nchc 1: r_ctsp r_hsp
+p_nstc 2: r_hsp r_ctsp r_stsp
+p_gov 2: p_nstc p_epb p_defense p_artc p_itri p_nchc
+p_artc 1: h_auto
+p_health 1: t_meddev
+a_crop 1: r_chiayi
+a_fruit 1: r_chiayi
+a_smart 2: a_crop
+a_sort 2: a_fruit a_crop
+r_nantun 1: r_ctsp r_tcmach
+j_process 2: s_foundry s_mem t_petro h_disp
+j_equip 2: s_foundry s_equip s_mem s_osat
+j_test 2: s_osat ardentec kyec winbond
+j_fw 2: h_server h_net h_edge h_auto
+j_algo 2: h_aoi h_optics s_equip t_robot
+j_sw 2: i_sw i_saas f_fintech h_server
+j_ai 2: i_ai s_design nvidia h_edge
+j_fae 2: s_equip yxlon h_edge
+j_data 2: f_bank l_ecom i_cloud
+j_sim 2: turing metai asml
+j_sales 2: i_sales l_whole f_ins
+j_ops 2: s_foundry t_food l_retail h8_food
+you 3: k_photo k_field k_cuda k_trt k_bit k_seg k_eval
+you 2: k_hyper k_modbus k_jetson k_cpp k_prereg k_gamma r_nantun
+you 1: k_can k_bench k_gate k_pyqt k_agent nyust
+k_photo 2: k_gamma k_field
+k_modbus 1: k_bench k_can
+k_cuda 2: k_trt k_cpp
+k_trt 2: k_jetson k_bit
+k_eval 2: k_prereg k_gate k_seg
+k_field 1: p_epb
+k_bench 1: j_equip j_test
+k_modbus 1: j_fw
+k_cpp 1: j_sw
+k_agent 1: j_ai
+n_semi 2: k_photo k_eval k_seg k_cuda amat kla asml s_equip
+n_aoi 2: k_photo k_seg k_field utechzone largan h_aoi tri
+n_twin 2: k_photo k_eval k_cuda turing metai nvidia delta
+n_robot 2: k_seg k_jetson k_modbus k_can hiwin solomon techman
+n_xray 2: k_photo k_hyper k_seg yxlon
+n_edge 2: k_trt k_cuda k_bit k_jetson kneron mtk advantech nvidia
+n_hud 2: k_gamma k_photo eli
+n_opc 2: k_cuda k_bit k_cpp asml
+n_env 2: k_field k_photo k_seg k_pyqt
+n_env 1: p_epb
+n_agri 2: k_hyper
+n_agri 1: a_sort a_smart
+n_semi 1: j_algo j_fae
+n_aoi 1: j_algo
+n_twin 1: j_sim
+n_edge 1: j_ai
+n_robot 1: j_algo`;
+
+// ---------- parse
+const nodes = RAW.trim().split('\n').map(l=>{const [id,label,c,w]=l.split('|');return {id,label,c:isNaN(+c)?c:+c,w:+w};});
+const byId = Object.fromEntries(nodes.map(n=>[n.id,n]));
+const seen = new Set(); const links=[];
+LINKS.trim().split('\n').forEach(line=>{
+  const m=line.match(/^(\S+)\s+([\d.]+):\s*(.+)$/); if(!m) return;
+  const [,s,w,ts]=m;
+  ts.trim().split(/\s+/).forEach(t=>{
+    if(!byId[s]||!byId[t]||s===t) return;
+    const key=[s,t].sort().join('|'); if(seen.has(key)) return; seen.add(key);
+    links.push({source:s,target:t,w:+w});
+  });
+});
+
+// ---------- adjacency + BFS from you
+const adj={}; nodes.forEach(n=>adj[n.id]=[]);
+links.forEach(l=>{adj[l.source].push(l.target); adj[l.target].push(l.source);});
+const hop={you:0}, parent={}; const qq=['you'];
+while(qq.length){const u=qq.shift(); adj[u].forEach(v=>{if(hop[v]===undefined){hop[v]=hop[u]+1;parent[v]=u;qq.push(v);}});}
+
+// ---------- stats
+const cnt = c => nodes.filter(n=>n.c===c).length;
+const within = k => nodes.filter(n=>n.id!=='you'&&hop[n.id]<=k).length;
+document.getElementById('stats').innerHTML =
+  `<span><b>${nodes.length}</b> nodes</span><span><b>${links.length}</b> links</span><span><b>${ORDER.length-1}</b> clusters</span>`+
+  `<span><b>${within(1)}</b> within 1 hop of you</span><span><b>${within(2)-within(1)}</b> at 2 hops</span><span><b>${nodes.length-1-within(2)}</b> at 3+ hops</span>`;
+
+// ---------- layout
+const W=2000,H=1500;
+const center={0:[1000,880],M:[1000,330],1:[230,1300],2:[600,330],3:[1400,330],4:[250,640],5:[230,1010],6:[1740,1250],7:[1800,880],8:[1400,1420],9:[1760,560],10:[620,1410],11:[1000,90],12:[1000,600],13:[1000,1150],14:[1000,880]};
+const pin={mfg:[1000,330],ind:[470,820],agr:[360,1160],svc:[1540,900],you:[1000,880],n_aoi:[700,770],n_robot:[640,875],n_xray:[690,985],n_hud:[790,1060],n_agri:[540,1040],n_semi:[1300,770],n_edge:[1360,875],n_opc:[1310,985],n_twin:[1210,1060],n_env:[1460,1040]};
+const r = n => n.c===0?26 : Math.max(5, Math.sqrt(n.w)*3.1);
+nodes.forEach((n,i)=>{const [x,y]=center[n.c]; const a=i*2.399; n.x=x+Math.cos(a)*(40+i%7*12); n.y=y+Math.sin(a)*(40+i%5*12);});
+Object.entries(pin).forEach(([id,[x,y]])=>{const n=byId[id]; n.x=n.fx=x; n.y=n.fy=y;});
+
+const sim=d3.forceSimulation(nodes)
+  .force('link',d3.forceLink(links).id(d=>d.id).distance(l=>l.source.c===l.target.c?80:190).strength(l=>l.source.c===l.target.c?.45:.035))
+  .force('charge',d3.forceManyBody().strength(-330).distanceMax(500))
+  .force('x',d3.forceX(d=>center[d.c][0]).strength(d=>d.c===11?.08:.2))
+  .force('y',d3.forceY(d=>center[d.c][1]).strength(d=>d.c===11?.08:.2))
+  .force('collide',d3.forceCollide(d=>r(d)+20).iterations(3))
+  .stop();
+for(let i=0;i<650;i++) sim.tick();
+nodes.forEach(n=>{n.x=Math.max(60,Math.min(W-60,n.x)); n.y=Math.max(50,Math.min(H-40,n.y));});
+
+// ---------- draw
+const svg=d3.select('#map'); const root=svg.append('g');
+const gL=root.append('g'), gN=root.append('g');
+const curve=d=>{const sx=d.source.x,sy=d.source.y,tx=d.target.x,ty=d.target.y,dx=tx-sx,dy=ty-sy,len=Math.hypot(dx,dy)||1,k=.16*len;
+  return `M${sx},${sy} Q${(sx+tx)/2-dy/len*k},${(sy+ty)/2+dx/len*k} ${tx},${ty}`;};
+const linkSel=gL.selectAll('path').data(links).join('path').attr('d',curve).attr('fill','none')
+  .attr('stroke',d=>color(d.source.c===0?d.target.c:d.source.c))
+  .attr('stroke-width',d=>0.5+d.w*0.85).attr('stroke-opacity',d=>d.source.c==='M'||d.target.c==='M'?.35:.5);
+
+const nodeSel=gN.selectAll('g').data(nodes).join('g').attr('class','node')
+  .attr('transform',d=>`translate(${d.x},${d.y})`).attr('tabindex',0).attr('role','button')
+  .attr('aria-label',d=>`${d.label}, ${hop[d.id]} hops from you`);
+nodeSel.append('circle').attr('class','body').attr('r',r)
+  .attr('fill',d=>d.c===0?'var(--bg)':color(d.c)).attr('stroke',d=>d.c===0?'var(--you)':'var(--bg)').attr('stroke-width',d=>d.c===0?5:1.2);
+nodeSel.filter(d=>d.c===0).append('circle').attr('r',14).attr('fill','var(--you)');
+const baseFont=d=>d.c===0?26 : d.c==='M'?24 : d.w>=12?19 : d.w>=6?15 : d.w>=4?13 : 11.5;
+const labelSel=nodeSel.append('text').attr('class','node-label').attr('text-anchor','middle')
+  .attr('font-weight',d=>(d.c===0||d.c==='M'||d.w>=6)?700:400).text(d=>d.label);
+
+let k=1, allLabels=false;
+function relabel(){
+  const f=Math.min(2.6,Math.max(1,0.8/k));
+  const minW = allLabels?0 : k<0.45?12 : k<0.65?6 : k<0.95?4 : 0;
+  labelSel.attr('font-size',d=>baseFont(d)*f).attr('dy',d=>-r(d)-5*f).attr('stroke-width',3*f)
+    .attr('display',d=>(d.c===0||d.c==='M'||d.c===14||d.w>=minW)?null:'none');
+}
+
+// ---------- zoom
+const zoom=d3.zoom().scaleExtent([0.25,5]).on('zoom',e=>{root.attr('transform',e.transform); k=e.transform.k; relabel();});
+svg.call(zoom).on('dblclick.zoom',null);
+function fit(dur=600){
+  const box=svg.node().getBoundingClientRect(); const pad=16;
+  const wide=box.width>900;
+  const padL=wide?(document.getElementById('legend').offsetWidth+20):pad, padR=wide?(document.getElementById('inspector').offsetWidth+20):pad;
+  const padT=wide?pad:56;
+  const s=Math.min((box.width-padL-padR)/W,(box.height-padT-pad)/H);
+  const t=d3.zoomIdentity.translate(padL+(box.width-padL-padR-W*s)/2,padT+(box.height-padT-pad-H*s)/2).scale(s);
+  svg.transition().duration(dur).call(zoom.transform,t);
+}
+function focusOn(n,scale=1.3,dur=700){
+  const box=svg.node().getBoundingClientRect();
+  const t=d3.zoomIdentity.translate(box.width/2-n.x*scale,box.height/2-n.y*scale).scale(scale);
+  svg.transition().duration(dur).call(zoom.transform,t);
+}
+
+// ---------- highlight & inspector
+const nb={}; nodes.forEach(n=>nb[n.id]=new Set([n.id,...adj[n.id]]));
+let selected=null, isolated=null;
+function pathTo(id){const p=[id]; while(p[0]!=='you'&&parent[p[0]]) p.unshift(parent[p[0]]); return p;}
+function applyState(hover){
+  linkSel.classed('path-edge',false);
+  if(selected){
+    const p=pathTo(selected.id), ps=new Set(p), pe=new Set(); for(let i=1;i<p.length;i++) pe.add([p[i-1],p[i]].sort().join('|'));
+    const show=new Set([...nb[selected.id],...ps]);
+    nodeSel.classed('dim',n=>!show.has(n.id));
+    linkSel.classed('dim',l=>!(l.source.id===selected.id||l.target.id===selected.id||pe.has([l.source.id,l.target.id].sort().join('|'))))
+      .classed('path-edge',l=>pe.has([l.source.id,l.target.id].sort().join('|')));
+    return;
+  }
+  const h=hover||null;
+  if(h){ nodeSel.classed('dim',n=>!nb[h.id].has(n.id)); linkSel.classed('dim',l=>l.source.id!==h.id&&l.target.id!==h.id); return; }
+  if(isolated!==null){ nodeSel.classed('dim',n=>n.c!==isolated&&n.c!==0); linkSel.classed('dim',l=>!(l.source.c===isolated||l.target.c===isolated)); return; }
+  nodeSel.classed('dim',false); linkSel.classed('dim',false);
+}
+const insp=document.getElementById('inspector');
+function pill(c){return `<span class="pill" style="background:${color(c)}">${CL[c].n}</span>`;}
+function inspect(n){
+  if(!n){
+    insp.innerHTML=`<h3>Click any node</h3><div class="meta">its path to you appears here</div>
+      <p class="empty">Start with <b>TSMC</b>, <b>Cathay</b> or <b>HIWIN</b> and compare the hop counts. The green niche nodes are one step from your skills, and most of the services side is four or more steps away.</p>`;
+    return;
+  }
+  const p=pathTo(n.id);
+  const nbr=adj[n.id].map(id=>byId[id]).sort((a,b)=>hop[a.id]-hop[b.id]||b.w-a.w);
+  insp.innerHTML=`<h3>${n.label}</h3><div class="meta">${pill(n.c)} ${n.id==='you'?'origin':hop[n.id]+' hop'+(hop[n.id]===1?'':'s')+' from you'} · ${adj[n.id].length} links</div>
+   ${n.id==='you'?'':`<div class="path"><b>Shortest path:</b><br>${p.map(id=>`<span>${byId[id].label}</span>`).join(' → ')}</div>`}
+   <b>Connected to</b><ul>${nbr.map(m=>`<li>${m.label}</li>`).join('')}</ul>`;
+}
+nodeSel.on('mouseenter',(e,d)=>{if(!selected) applyState(d);})
+  .on('mouseleave',()=>{if(!selected) applyState(null);})
+  .on('click',(e,d)=>{e.stopPropagation(); selected=(selected&&selected.id===d.id)?null:d; inspect(selected); applyState(null);})
+  .on('keydown',(e,d)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault(); selected=(selected&&selected.id===d.id)?null:d; inspect(selected); applyState(null);}});
+svg.on('click',()=>{selected=null; inspect(null); applyState(null);});
+
+// ---------- legend
+const leg=document.getElementById('legend');
+const avg=c=>{const xs=nodes.filter(n=>n.c===c&&n.id!=='you').map(n=>hop[n.id]); return xs.length?xs.reduce((a,b)=>a+b,0)/xs.length:0;};
+leg.innerHTML=`<button class="toggle" type="button" aria-expanded="false">Legend ▾</button><table><thead><tr><th>No.</th><th>Cluster Label</th><th class="n">nodes</th><th class="n">hops</th></tr></thead><tbody>${
+  ORDER.map((c,i)=>`<tr class="row" tabindex="0" data-c="${c}"><td><span class="sw" style="background:${color(c)}">${c===0?'':c==='M'?'0':c}</span></td><td>${CL[c].n}</td><td class="n">${cnt(c)}</td><td class="n">${c===0?'—':avg(c).toFixed(1)}</td></tr>`).join('')
+}</tbody></table>`;
+leg.querySelector('.toggle').addEventListener('click',e=>{const o=leg.classList.toggle('open'); e.currentTarget.setAttribute('aria-expanded',o);});
+leg.querySelectorAll('tr.row').forEach(tr=>{
+  const act=()=>{const raw=tr.dataset.c; const c=isNaN(+raw)?raw:+raw; isolated=(isolated===c)?null:c; selected=null; inspect(null);
+    leg.querySelectorAll('tr.row').forEach(x=>x.classList.toggle('on',x===tr&&isolated!==null)); applyState(null);};
+  tr.addEventListener('click',act); tr.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();act();}});
+});
+
+// ---------- distance chart
+const dist=document.getElementById('dist');
+const rows=ORDER.filter(c=>c!==0).map(c=>({c,a:avg(c)})).sort((a,b)=>a.a-b.a);
+const maxA=Math.max(...rows.map(r=>r.a));
+rows.forEach(({c,a})=>{const el=document.createElement('div'); el.className='drow';
+  el.innerHTML=`<div class="lab"><i style="background:${color(c)}"></i>${CL[c].n}</div><div class="track"><span style="width:${(a/maxA*100).toFixed(1)}%;background:${color(c)}"></span></div><div class="num">${a.toFixed(2)} hops</div>`;
+  dist.appendChild(el);});
+
+// ---------- search & buttons
+const dl=document.getElementById('names'); nodes.forEach(n=>{const o=document.createElement('option'); o.value=n.label; dl.appendChild(o);});
+const q=document.getElementById('q');
+function find(){const v=q.value.trim().toLowerCase(); if(!v) return;
+  const n=nodes.find(n=>n.label.toLowerCase()===v)||nodes.find(n=>n.label.toLowerCase().includes(v)||n.id.includes(v));
+  if(n){selected=n; inspect(n); applyState(null); focusOn(n,1.4);}}
+q.addEventListener('change',find); q.addEventListener('keydown',e=>{if(e.key==='Enter') find();});
+document.getElementById('fit').addEventListener('click',()=>{selected=null;isolated=null;inspect(null);applyState(null);leg.querySelectorAll('tr.row').forEach(x=>x.classList.remove('on'));fit();});
+document.getElementById('you').addEventListener('click',()=>{selected=byId.you; inspect(byId.you); applyState(null); focusOn(byId.you,0.9);});
+const lb=document.getElementById('labels'); lb.addEventListener('click',()=>{allLabels=!allLabels; lb.setAttribute('aria-pressed',allLabels); relabel();});
+
+inspect(null); fit(0); relabel();
+window.addEventListener('resize',()=>fit(0));
+})();
+</script>
+
+</body>
+</html>
